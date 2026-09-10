@@ -36,12 +36,12 @@ export const CONFIG = {
   // Configuração do Firebase (cole aqui o objeto do console do Firebase).
   // Só chaves públicas de cliente — pode ficar no repositório público.
   firebase: {
-    apiKey: "COLE_AQUI",
-    authDomain: "COLE_AQUI.firebaseapp.com",
-    projectId: "COLE_AQUI",
-    storageBucket: "COLE_AQUI.appspot.com",
-    messagingSenderId: "COLE_AQUI",
-    appId: "COLE_AQUI",
+    apiKey: "AIzaSyAusuepEfgI761cDKzdwoNEQXI6o4f1GwQ",
+    authDomain: "nfl-yeiya.firebaseapp.com",
+    projectId: "nfl-yeiya",
+    storageBucket: "nfl-yeiya.firebasestorage.app",
+    messagingSenderId: "598223854154",
+    appId: "1:598223854154:web:d1fdfe726062b3213ae4b3",
   },
 };
 
