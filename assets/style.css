@@ -207,6 +207,33 @@ h2 { font-size: 18px; margin: 14px 4px; }
 .side:disabled { cursor: default; }
 .side .fav { font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 4px; }
 .vs { align-self: center; font-weight: 800; color: var(--muted); font-size: 12px; }
+.side .scr { margin-left: auto; font-weight: 800; font-size: 20px; }
+.live { color: #ff6b6b; font-weight: 700; }
+
+.seg {
+  display: flex;
+  gap: 4px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.seg-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg-btn.active { background: var(--accent); color: #1a1300; }
+#nflBox h3 { font-size: 15px; }
+#nflBox table { margin-top: 4px; }
+#nflBox td { padding: 7px 6px; }
 .friends {
   margin-top: 10px;
   display: flex;

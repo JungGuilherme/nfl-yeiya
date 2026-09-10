@@ -49,6 +49,6 @@ export const CONFIG = {
 export const ESPN = {
   scoreboard: (year, seasontype, week) =>
     `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?year=${year}&seasontype=${seasontype}&week=${week}`,
-  teams:
-    "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams?limit=40",
+  standings: (year) =>
+    `https://site.api.espn.com/apis/v2/sports/football/nfl/standings?season=${year}&level=3`,
 };

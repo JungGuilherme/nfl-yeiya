@@ -44,7 +44,10 @@ const S = {
   standings: [],
   weekMeta: {},
   view: "rodada",
+  nfl: null, // standings ESPN
+  nflView: "divisao",
 };
+let scoreTimer = null;
 
 const $ = (s) => document.querySelector(s);
 const fmtBR = new Intl.DateTimeFormat("pt-BR", {
@@ -70,9 +73,32 @@ document.querySelectorAll(".tab").forEach((btn) => {
     S.view = btn.dataset.view;
     document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === btn));
     document.querySelectorAll(".view").forEach((v) => (v.hidden = v.id !== `view-${S.view}`));
+    manageScoreTimer();
+    if (S.view === "nfl") loadNflStandings();
     render();
   };
 });
+document.querySelectorAll("#nflSeg .seg-btn").forEach((btn) => {
+  btn.onclick = () => {
+    S.nflView = btn.dataset.nfl;
+    document.querySelectorAll("#nflSeg .seg-btn").forEach((b) => b.classList.toggle("active", b === btn));
+    renderNfl();
+  };
+});
+// atualiza placares ao vivo a cada 45s enquanto a aba Rodada estiver aberta
+function manageScoreTimer() {
+  clearInterval(scoreTimer);
+  if (S.view === "rodada") scoreTimer = setInterval(refreshScores, 45000);
+}
+async function refreshScores() {
+  if (document.hidden) return;
+  try {
+    const r = await fetch(ESPN.scoreboard(CONFIG.season.year, S.seasonType, S.week));
+    const j = await r.json();
+    S.games = (j.events || []).map(parseEspnEvent).sort((a, b) => a.kickoffMs - b.kickoffMs);
+    if (S.view === "rodada") renderGames();
+  } catch (e) {}
+}
 $("#weekPrev").onclick = () => changeWeek(-1);
 $("#weekNext").onclick = () => changeWeek(1);
 
@@ -251,6 +277,7 @@ async function boot() {
   await initPublic();
 }
 initPublic();
+manageScoreTimer();
 
 async function loadTeams() {
   try {
@@ -462,6 +489,7 @@ async function adminSet(game, field, value) {
 function render() {
   if (S.view === "rodada") renderGames();
   else if (S.view === "ranking") renderRanking();
+  else if (S.view === "nfl") renderNfl();
   else if (S.view === "admin") renderAdmin();
   if (S.view !== "rodada") {
     const bar = $("#saveBar");
@@ -485,18 +513,20 @@ function renderGames() {
     const unsaved = g.id in S.pending;
     const pv = pointValueFor(g, CONFIG);
 
+    let statusHtml;
+    if (g.voided) statusHtml = "❌ anulado";
+    else if (g.completed) statusHtml = `<span class="locked">✅ final</span>`;
+    else if (g.state === "in")
+      statusHtml = `<span class="live">🔴 ao vivo · ${g.statusDetail || ""}</span>`;
+    else if (locked) statusHtml = `<span class="locked">🔒 ${g.statusDetail || "começou"}</span>`;
+    else statusHtml = "aberto";
+
     const el = document.createElement("div");
     el.className = "game";
     el.innerHTML = `
       <div class="game-head">
         <span>${fmtBR.format(new Date(g.kickoffMs))} · Brasília</span>
-        <span>${
-          g.voided
-            ? "❌ anulado"
-            : locked
-            ? `<span class="locked">${g.completed ? "encerrado " + (g.awayScore ?? "") + "–" + (g.homeScore ?? "") : "🔒 " + (g.statusDetail || "em jogo")}</span>`
-            : "aberto"
-        } · <span class="points-tag">${pv === 0 ? "amistoso" : pv + " pt"}</span>${
+        <span>${statusHtml} · <span class="points-tag">${pv === 0 ? "amistoso" : pv + " pt"}</span>${
           unsaved ? ' · <span class="unsaved">não salvo</span>' : ""
         }</span>
       </div>
@@ -559,15 +589,18 @@ function sideBtn(g, side, locked, winner, shownPick) {
   const name = side === "home" ? g.homeName : g.awayName;
   const rec = side === "home" ? g.homeRec : g.awayRec;
   const logo = side === "home" ? g.homeLogo : g.awayLogo;
+  const score = side === "home" ? g.homeScore : g.awayScore;
   const cls = [
     "side",
     shownPick === abbr ? "picked" : "",
     winner && winner === abbr ? "winner" : "",
     winner && winner !== abbr ? "loser" : "",
   ].join(" ");
+  const showScore = g.state && g.state !== "pre";
   return `<button class="${cls}" data-side data-abbr="${abbr}" ${locked ? "disabled" : ""}>
     <img src="${logo}" alt="${abbr}">
     <span><span class="nm">${name}</span><br><span class="rec">${rec}</span></span>
+    ${showScore ? `<span class="scr">${score ?? 0}</span>` : ""}
   </button>`;
 }
 
@@ -610,6 +643,149 @@ function renderRanking() {
       <p>💯 <b>Semana perfeita:</b> ${(m.perfect || []).join(", ") || "ninguém"}</p>
     </div>`;
   }
+}
+
+// ---------- NFL: classificação da liga ----------
+let nflLoading = false;
+async function loadNflStandings() {
+  if (S.nfl || nflLoading) return;
+  nflLoading = true;
+  renderNfl();
+  try {
+    const r = await fetch(ESPN.standings(CONFIG.season.year));
+    const j = await r.json();
+    S.nfl = (j.children || []).map((conf) => ({
+      name: conf.abbreviation || conf.name,
+      fullName: conf.name,
+      divisions: (conf.children || []).map((div) => ({
+        name: div.name,
+        teams: (div.standings?.entries || []).map(parseStandingEntry),
+      })),
+    }));
+  } catch (e) {
+    console.error("nfl standings", e);
+  }
+  nflLoading = false;
+  renderNfl();
+}
+
+function parseStandingEntry(e) {
+  const st = {};
+  (e.stats || []).forEach((s) => (st[s.name] = s.displayValue ?? s.value));
+  return {
+    abbr: e.team?.abbreviation,
+    name: e.team?.shortDisplayName || e.team?.displayName,
+    logo: e.team?.logos?.[0]?.href || S.teamByAbbr[e.team?.abbreviation]?.logo || "",
+    wins: +(st.wins ?? 0),
+    losses: +(st.losses ?? 0),
+    ties: +(st.ties ?? 0),
+    pct: st.winPercent ?? ".000",
+    streak: st.streak && st.streak !== "-" ? st.streak : "",
+    diff: st.pointDifferential ?? st.differential ?? "0",
+    seed: +(st.playoffSeed ?? 0),
+  };
+}
+
+function teamRow(t, extra = "") {
+  return `<tr>
+    <td><span class="rankcell">${t.logo ? `<img src="${t.logo}">` : ""} ${t.name}</span></td>
+    <td>${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}</td>
+    <td class="muted">${t.pct}</td>
+    <td class="muted">${t.diff > 0 ? "+" + t.diff : t.diff}</td>
+    <td class="muted">${extra || t.streak}</td>
+  </tr>`;
+}
+
+function tableWrap(title, rows) {
+  return `<div class="card">
+    <h3 style="margin:0 0 8px">${title}</h3>
+    <table><thead><tr><th>Time</th><th>V-D</th><th>%</th><th>Saldo</th><th>Seq.</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+function renderNfl() {
+  const box = $("#nflBox");
+  if (!box) return;
+  if (!S.nfl) {
+    box.innerHTML = `<div class="empty">${nflLoading ? "Carregando classificação…" : "—"}</div>`;
+    return;
+  }
+  if (S.nflView === "divisao") {
+    box.innerHTML = S.nfl
+      .map((conf) =>
+        conf.divisions
+          .map((d) =>
+            tableWrap(
+              d.name,
+              d.teams
+                .slice()
+                .sort(sortTeams)
+                .map((t) => teamRow(t))
+                .join("")
+            )
+          )
+          .join("")
+      )
+      .join("");
+  } else if (S.nflView === "conferencia") {
+    box.innerHTML = S.nfl
+      .map((conf) => {
+        const all = conf.divisions.flatMap((d) => d.teams).sort(sortTeams);
+        return tableWrap(
+          conf.fullName,
+          all
+            .map((t, i) => teamRow(t, i < 7 ? (i < 4 ? "🏆" : "WC") : ""))
+            .join("")
+        );
+      })
+      .join("");
+  } else {
+    // playoff picture: usa o seed da ESPN (1-4 líderes de divisão, 5-7 wild cards)
+    box.innerHTML = S.nfl
+      .map((conf) => {
+        const seeded = conf.divisions
+          .flatMap((d) => d.teams)
+          .filter((t) => t.seed >= 1 && t.seed <= 7)
+          .sort((a, b) => a.seed - b.seed);
+        const rest = conf.divisions
+          .flatMap((d) => d.teams)
+          .filter((t) => !(t.seed >= 1 && t.seed <= 7))
+          .sort(sortTeams);
+        if (!seeded.length)
+          return `<div class="card"><h3>${conf.fullName}</h3><p class="muted">A ESPN ainda não definiu os cabeças de chave (temporada mal começou).</p></div>`;
+        const seedRows = seeded
+          .map(
+            (t) =>
+              `<tr><td><b>${t.seed}</b></td><td><span class="rankcell">${
+                t.logo ? `<img src="${t.logo}">` : ""
+              } ${t.name}</span> ${t.seed <= 4 ? '<span class="badge">divisão</span>' : '<span class="muted">wild card</span>'}</td><td>${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}</td></tr>`
+          )
+          .join("");
+        const restRows = rest
+          .slice(0, 4)
+          .map(
+            (t) =>
+              `<tr><td class="muted">–</td><td><span class="rankcell">${
+                t.logo ? `<img src="${t.logo}">` : ""
+              } ${t.name}</span></td><td>${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}</td></tr>`
+          )
+          .join("");
+        return `<div class="card">
+          <h3 style="margin:0 0 8px">${conf.fullName} — chaveamento</h3>
+          <table><tbody>${seedRows}</tbody></table>
+          <p class="muted" style="margin:10px 0 4px">Na disputa (fora do top 7):</p>
+          <table><tbody>${restRows}</tbody></table>
+        </div>`;
+      })
+      .join("");
+  }
+}
+
+function sortTeams(a, b) {
+  const pa = parseFloat(a.pct),
+    pb = parseFloat(b.pct);
+  return pb - pa || b.wins - a.wins || parseFloat(b.diff) - parseFloat(a.diff);
 }
 
 function renderAdmin() {

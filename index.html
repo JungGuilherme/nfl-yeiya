@@ -21,6 +21,7 @@
     <nav class="tabs">
       <button class="tab active" data-view="rodada">Rodada</button>
       <button class="tab" data-view="ranking">Ranking</button>
+      <button class="tab" data-view="nfl">NFL</button>
       <button class="tab" data-view="regras">Regras</button>
       <button class="tab admin-only" data-view="admin" hidden>Admin</button>
     </nav>
@@ -42,6 +43,17 @@
         <div id="weekHighlights"></div>
       </section>
 
+      <section id="view-nfl" class="view" hidden>
+        <h2>🏟️ NFL 2026</h2>
+        <div class="seg" id="nflSeg">
+          <button class="seg-btn active" data-nfl="divisao">Por divisão</button>
+          <button class="seg-btn" data-nfl="conferencia">Por conferência</button>
+          <button class="seg-btn" data-nfl="playoffs">Playoff picture</button>
+        </div>
+        <div id="nflBox"></div>
+        <p class="muted" style="margin-top:14px">Fonte: ESPN · atualiza automaticamente.</p>
+      </section>
+
       <section id="view-regras" class="view" hidden>
         <h2>📋 Como funciona</h2>
         <div class="card prose">
@@ -54,6 +66,8 @@
             <li>Resultados seguem a <b>ESPN</b>. A pontuação é recalculada sozinha após os jogos.</li>
             <li>Empate no ranking: desempata quem tem <b>mais acertos nos playoffs</b>.</li>
             <li><b>MVP da rodada</b>: quem fez mais pontos na semana. <b>Semana perfeita</b>: acertou todos os jogos que valem ponto.</li>
+            <li>Os placares aparecem <b>ao vivo</b> (com poucos segundos de atraso) enquanto a aba Rodada estiver aberta.</li>
+            <li>A aba <b>NFL</b> traz a classificação da liga por divisão, por conferência e o playoff picture (fonte ESPN).</li>
           </ul>
           <p class="muted">O jogo de abertura não vale ponto — a pontuação começa valendo a partir da configuração da temporada.</p>
         </div>
