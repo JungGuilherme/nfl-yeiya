@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// ==========================================================
+//  Regras de segurança do bolão YEIYA
+//  >>> TROQUE "guilherme" pelo username do admin (o mesmo do config.js) <<<
+// ==========================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/guilherme)
+        && get(/databases/$(database)/documents/users/guilherme).data.uid == request.auth.uid;
+    }
+
+    function gameDoc(id) {
+      return get(/databases/$(database)/documents/games/$(id)).data;
+    }
+
+    // ---- usuários ----
+    match /users/{username} {
+      allow read: if true;
+      // cadastro: só o próprio dispositivo, username ainda não existe
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.username == username
+        && username.matches('[a-z0-9_]{3,16}');
+      // update: reassociar dispositivo (precisa bater o pinHash) ou já ser o dono
+      allow update: if request.auth != null
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.pinHash == resource.data.pinHash
+        && request.resource.data.team == resource.data.team
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ---- palpites ----
+    match /picks/{pickId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && pickId == request.resource.data.username + '_' + request.resource.data.gameId
+        && get(/databases/$(database)/documents/users/$(request.resource.data.username)).data.uid == request.auth.uid
+        && request.time < gameDoc(request.resource.data.gameId).kickoff
+        && request.resource.data.pickAbbr in [
+             gameDoc(request.resource.data.gameId).homeAbbr,
+             gameDoc(request.resource.data.gameId).awayAbbr
+           ]
+        && request.resource.data.keys().hasOnly(
+             ['username','gameId','pickAbbr','week','seasonType','updatedAt']
+           );
+      allow delete: if false;
+    }
+
+    // ---- jogos: escreve a automação (admin SDK ignora regras) ----
+    match /games/{id} {
+      allow read: if true;
+      // admin pode mexer só em override / anulação pelo site
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['adminOverrideWinner','voided']);
+      allow create, delete: if false;
+    }
+
+    // ---- classificação / metadados: só leitura pública ----
+    match /standings/{u} { allow read: if true; allow write: if false; }
+    match /weekMeta/{k}  { allow read: if true; allow write: if false; }
+    match /config/{d}    { allow read: if true; allow write: if false; }
+  }
+}

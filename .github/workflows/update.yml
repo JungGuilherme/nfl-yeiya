@@ -1,0 +1,27 @@
+name: Atualizar bolão YEIYA
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # a cada 30 min (o GitHub pode atrasar alguns minutos)
+  workflow_dispatch: {} # botão manual em Actions
+
+concurrency:
+  group: yeiya-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar deps
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+      - name: Rodar atualização
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node update.mjs

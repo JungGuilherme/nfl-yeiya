@@ -1,0 +1,9 @@
+{
+  "name": "yeiya-updater",
+  "private": true,
+  "type": "module",
+  "scripts": { "run": "node update.mjs" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>🏈 YEIYA — Bolão NFL</title>
+    <link rel="stylesheet" href="assets/style.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%88%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body data-theme="dark">
+    <div class="field-bg" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">🏈 <span>YEIYA</span></div>
+      <div class="spacer"></div>
+      <button id="themeBtn" class="icon-btn" title="Tema claro/escuro">◐</button>
+      <button id="userBtn" class="user-chip" hidden></button>
+      <button id="loginBtn" class="btn btn-primary">Entrar</button>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-view="rodada">Rodada</button>
+      <button class="tab" data-view="ranking">Ranking</button>
+      <button class="tab" data-view="regras">Regras</button>
+      <button class="tab admin-only" data-view="admin" hidden>Admin</button>
+    </nav>
+
+    <main id="app">
+      <section id="view-rodada" class="view">
+        <div class="week-nav">
+          <button id="weekPrev" class="icon-btn">◀</button>
+          <h2 id="weekTitle">Carregando…</h2>
+          <button id="weekNext" class="icon-btn">▶</button>
+        </div>
+        <div id="games" class="games"></div>
+      </section>
+
+      <section id="view-ranking" class="view" hidden>
+        <h2>🏆 Classificação geral</h2>
+        <div id="standings"></div>
+        <h2 style="margin-top:28px">⭐ Destaques da rodada</h2>
+        <div id="weekHighlights"></div>
+      </section>
+
+      <section id="view-regras" class="view" hidden>
+        <h2>📋 Como funciona</h2>
+        <div class="card prose">
+          <p>Toda rodada aparece a lista de jogos. Clique no time que você acha que ganha.</p>
+          <ul>
+            <li>Cada acerto na temporada regular vale <b>1 ponto</b>.</li>
+            <li>Playoffs: Wild Card e Divisional <b>2</b>, Conference <b>3</b>, Super Bowl <b>5</b>.</li>
+            <li>O palpite de cada jogo <b>fecha na hora que o jogo começa</b> (horário de Brasília).</li>
+            <li>Depois do kickoff você enxerga o palpite dos amigos naquele jogo.</li>
+            <li>Resultados seguem a <b>ESPN</b>. A pontuação é recalculada sozinha após os jogos.</li>
+            <li>Empate no ranking: desempata quem tem <b>mais acertos nos playoffs</b>.</li>
+            <li><b>MVP da rodada</b>: quem fez mais pontos na semana. <b>Semana perfeita</b>: acertou todos os jogos que valem ponto.</li>
+          </ul>
+          <p class="muted">O jogo de abertura não vale ponto — a pontuação começa valendo a partir da configuração da temporada.</p>
+        </div>
+      </section>
+
+      <section id="view-admin" class="view" hidden>
+        <h2>🛠️ Admin</h2>
+        <p class="muted">Corrija o vencedor ou anule um jogo. Some pontos são recalculados na próxima passada da automação (ou clique em recalcular pela Action).</p>
+        <div id="adminGames"></div>
+      </section>
+    </main>
+
+    <!-- Modal de login / cadastro -->
+    <dialog id="loginDialog">
+      <form method="dialog" id="loginForm">
+        <h3 id="loginTitle">Entrar no bolão</h3>
+        <label>Username
+          <input id="fUser" autocomplete="off" maxlength="16" placeholder="seu apelido" required />
+        </label>
+        <label>PIN (4 dígitos)
+          <input id="fPin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000" required />
+        </label>
+        <p id="loginMsg" class="msg"></p>
+        <div id="teamPickerWrap" hidden>
+          <p>Escolha seu time (vira seu avatar):</p>
+          <div id="teamPicker" class="team-picker"></div>
+        </div>
+        <menu>
+          <button value="cancel" class="btn">Cancelar</button>
+          <button value="ok" id="loginSubmit" class="btn btn-primary">Entrar</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
