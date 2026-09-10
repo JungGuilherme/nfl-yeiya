@@ -275,3 +275,50 @@ dialog input {
 dialog menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; margin: 16px 0 0; }
 .msg.err { color: var(--danger); }
 .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+
+.unsaved {
+  color: #1a1300;
+  background: var(--accent);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-weight: 700;
+}
+
+#saveBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  background: linear-gradient(0deg, var(--bg), transparent);
+  z-index: 50;
+}
+#saveBar .btn {
+  font-size: 16px;
+  padding: 13px 26px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  transform: translate(-50%, 20px);
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  max-width: 90%;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 60;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+main { padding-bottom: 90px; }

@@ -38,7 +38,9 @@ const S = {
   seasonType: 2,
   games: [], // mescla ESPN + Firestore
   fsGames: {}, // id -> doc Firestore
-  picks: {}, // `${username}_${gameId}` -> {username,gameId,pickAbbr}
+  picks: {}, // `${username}_${gameId}` -> {username,gameId,pickAbbr}  (salvos)
+  pending: {}, // gameId -> abbr  (escolhas ainda não salvas)
+  saving: false,
   standings: [],
   weekMeta: {},
   view: "rodada",
@@ -369,28 +371,82 @@ function merged(g) {
 }
 
 // ---------- palpitar ----------
-async function pick(game, abbr) {
+// clique num time = escolha local (não salva ainda)
+function pick(game, abbr) {
   if (!S.user) return openLogin();
   if (Date.now() >= game.kickoffMs) return;
-  const id = `${S.user.username}_${game.id}`;
-  S.picks[id] = { username: S.user.username, gameId: game.id, pickAbbr: abbr, week: game.week, seasonType: game.seasonType };
+  const saved = S.picks[`${S.user.username}_${game.id}`];
+  if (saved && saved.pickAbbr === abbr) delete S.pending[game.id]; // voltou ao salvo
+  else S.pending[game.id] = abbr;
   render();
-  try {
-    await setDoc(
-      doc(db, "picks", id),
-      {
-        username: S.user.username,
-        gameId: game.id,
-        pickAbbr: abbr,
-        week: game.week,
-        seasonType: game.seasonType,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  } catch (e) {
-    alert("Não deu pra salvar o palpite: " + e.message);
+}
+
+// palpite "efetivo" a mostrar: pendente > salvo
+function currentPick(gameId) {
+  if (S.pending[gameId]) return S.pending[gameId];
+  const saved = S.user && S.picks[`${S.user.username}_${gameId}`];
+  return saved ? saved.pickAbbr : null;
+}
+
+// botão: salva todas as escolhas pendentes da rodada
+async function saveRound() {
+  if (!S.user || S.saving) return;
+  const ids = Object.keys(S.pending).filter((id) =>
+    S.games.some((g) => g.id === id)
+  );
+  if (!ids.length) return;
+  S.saving = true;
+  render();
+  let ok = 0,
+    skipped = 0,
+    fail = 0;
+  for (const gameId of ids) {
+    const g = S.games.find((x) => x.id === gameId);
+    if (g && Date.now() >= g.kickoffMs) {
+      skipped++;
+      delete S.pending[gameId];
+      continue;
+    }
+    try {
+      await setDoc(
+        doc(db, "picks", `${S.user.username}_${gameId}`),
+        {
+          username: S.user.username,
+          gameId,
+          pickAbbr: S.pending[gameId],
+          week: g?.week ?? S.week,
+          seasonType: g?.seasonType ?? S.seasonType,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      delete S.pending[gameId];
+      ok++;
+    } catch (e) {
+      console.error("save pick", gameId, e);
+      fail++;
+    }
   }
+  S.saving = false;
+  render();
+  let msg = `${ok} palpite(s) salvo(s).`;
+  if (skipped) msg += ` ${skipped} não salvo(s): jogo já começou.`;
+  if (fail) msg += ` ${fail} falhou(aram) — tente de novo.`;
+  toast(msg);
+}
+
+let toastTimer = null;
+function toast(text) {
+  let t = $("#toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    document.body.appendChild(t);
+  }
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
 }
 
 // ---------- admin ----------
@@ -407,6 +463,10 @@ function render() {
   if (S.view === "rodada") renderGames();
   else if (S.view === "ranking") renderRanking();
   else if (S.view === "admin") renderAdmin();
+  if (S.view !== "rodada") {
+    const bar = $("#saveBar");
+    if (bar) bar.remove();
+  }
   refreshUserUI();
 }
 
@@ -421,7 +481,8 @@ function renderGames() {
     const g = merged(raw);
     const locked = Date.now() >= g.kickoffMs;
     const winner = effectiveWinner(g);
-    const myPick = S.user ? S.picks[`${S.user.username}_${g.id}`] : null;
+    const shownPick = currentPick(g.id);
+    const unsaved = g.id in S.pending;
     const pv = pointValueFor(g, CONFIG);
 
     const el = document.createElement("div");
@@ -435,12 +496,14 @@ function renderGames() {
             : locked
             ? `<span class="locked">${g.completed ? "encerrado " + (g.awayScore ?? "") + "–" + (g.homeScore ?? "") : "🔒 " + (g.statusDetail || "em jogo")}</span>`
             : "aberto"
-        } · <span class="points-tag">${pv === 0 ? "amistoso" : pv + " pt"}</span></span>
+        } · <span class="points-tag">${pv === 0 ? "amistoso" : pv + " pt"}</span>${
+          unsaved ? ' · <span class="unsaved">não salvo</span>' : ""
+        }</span>
       </div>
       <div class="matchup">
-        ${sideBtn(g, "away", locked, winner, myPick)}
+        ${sideBtn(g, "away", locked, winner, shownPick)}
         <span class="vs">@</span>
-        ${sideBtn(g, "home", locked, winner, myPick)}
+        ${sideBtn(g, "home", locked, winner, shownPick)}
       </div>
       <div class="friends" data-friends></div>
     `;
@@ -468,23 +531,43 @@ function renderGames() {
     }
     box.appendChild(el);
   }
+  renderSaveBar();
 }
 
-function sideBtn(g, side, locked, winner, myPick) {
+function renderSaveBar() {
+  let bar = $("#saveBar");
+  const n = Object.keys(S.pending).filter((id) =>
+    S.games.some((g) => g.id === id)
+  ).length;
+  if (!n || !S.user) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "saveBar";
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `<button class="btn btn-primary" id="saveRoundBtn" ${
+    S.saving ? "disabled" : ""
+  }>${S.saving ? "Salvando…" : `💾 Salvar palpites da rodada (${n})`}</button>`;
+  bar.querySelector("#saveRoundBtn").onclick = saveRound;
+}
+
+function sideBtn(g, side, locked, winner, shownPick) {
   const abbr = side === "home" ? g.homeAbbr : g.awayAbbr;
   const name = side === "home" ? g.homeName : g.awayName;
   const rec = side === "home" ? g.homeRec : g.awayRec;
   const logo = side === "home" ? g.homeLogo : g.awayLogo;
   const cls = [
     "side",
-    myPick?.pickAbbr === abbr ? "picked" : "",
+    shownPick === abbr ? "picked" : "",
     winner && winner === abbr ? "winner" : "",
     winner && winner !== abbr ? "loser" : "",
   ].join(" ");
-  const fav = g.favoriteAbbr === abbr ? `<span class="fav">favorito</span>` : "";
   return `<button class="${cls}" data-side data-abbr="${abbr}" ${locked ? "disabled" : ""}>
     <img src="${logo}" alt="${abbr}">
-    <span><span class="nm">${name}</span> ${fav}<br><span class="rec">${rec}</span></span>
+    <span><span class="nm">${name}</span><br><span class="rec">${rec}</span></span>
   </button>`;
 }
 
