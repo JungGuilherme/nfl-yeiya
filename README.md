@@ -50,17 +50,16 @@ sozinha seguindo a **ESPN**.
 
 ### 3. Publicar o site
 
+Crie um repositório vazio chamado `nfl-yeiya` em <https://github.com/new> (público, sem README).
+Depois, na pasta do projeto:
+
 ```bash
-git init
-git add .
-git commit -m "bolão YEIYA"
-git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/nfl-yeiya.git
+git remote add origin https://github.com/jungguilherme/nfl-yeiya.git
 git push -u origin main
 ```
 
 No GitHub: **Settings → Pages → Source: Deploy from a branch → `main` / `root`** → salvar.
-Em 1–2 min o site fica no ar em `https://SEU_USUARIO.github.io/nfl-yeiya/`.
+Em 1–2 min o site fica no ar em `https://jungguilherme.github.io/nfl-yeiya/`.
 
 ### 4. Primeira carga de dados
 

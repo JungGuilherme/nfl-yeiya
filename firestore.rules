@@ -2,7 +2,7 @@ rules_version = '2';
 
 // ==========================================================
 //  Regras de segurança do bolão YEIYA
-//  >>> TROQUE "guilherme" pelo username do admin (o mesmo do config.js) <<<
+//  Admin = "jungguilherme" (mesmo username do config.js). Troque nas 3 linhas se mudar.
 // ==========================================================
 
 service cloud.firestore {
@@ -10,8 +10,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null
-        && exists(/databases/$(database)/documents/users/guilherme)
-        && get(/databases/$(database)/documents/users/guilherme).data.uid == request.auth.uid;
+        && exists(/databases/$(database)/documents/users/jungguilherme)
+        && get(/databases/$(database)/documents/users/jungguilherme).data.uid == request.auth.uid;
     }
 
     function gameDoc(id) {

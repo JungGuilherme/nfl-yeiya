@@ -8,8 +8,8 @@ export const CONFIG = {
 
   // Username (em minúsculas) de quem é o admin do bolão.
   // Só essa pessoa vê os botões de corrigir vencedor / anular jogo.
-  // >>> TROQUE pelo seu username antes de publicar <<<
-  adminUsername: "guilherme",
+  // Entre no bolão com ESTE username pra ter os poderes de admin.
+  adminUsername: "jungguilherme",
 
   // Temporada da NFL. Em 2026 a temporada é year=2026.
   season: {
